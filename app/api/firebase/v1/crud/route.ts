@@ -8,9 +8,9 @@ import * as yup from 'yup';
 const table_name = "test"
 
 const contentSchema = yup.object({
-  email: yup.string().required('Email is required'),
-  link: yup.string().required('Link is required'),
-  rating: yup.number().required('Rating is Required'),
+  title: yup.string().required('Title is required'),
+  sub_title: yup.string().required('Subtitle is required'),
+  article: yup.string().required('Article is Required'),
 }).strict()
 .noUnknown(true, 'Unknown field: ${unknown}');
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     await transaction.set(docRef, docData);
   });
 
-  return new Response('Link Saved', {
+  return new Response('Article Saved', {
     status: 200,
   })
 
@@ -103,8 +103,6 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(req.nextUrl.searchParams.get('pageSize') || '10', 10);
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1', 10);
     const email = req.nextUrl.searchParams.get('email');
-    const minRating = req.nextUrl.searchParams.get('minRating');
-    const maxRating = req.nextUrl.searchParams.get('maxRating');
     const startAfter = req.nextUrl.searchParams.get('startAfter'); // Use document ID or a field value for pagination
 
     let query: admin.firestore.Query = db.collection(table_name);
@@ -113,13 +111,6 @@ export async function GET(req: NextRequest) {
     if (email) {
         query = query.where('email', '==', email);
     }
-    if (minRating) {
-        query = query.where('rating', '>=', parseFloat(minRating));
-    }
-    if (maxRating) {
-        query = query.where('rating', '<=', parseFloat(maxRating));
-    }
-
     // Apply sorting
     if (sortField) {
       query = query.orderBy(sortField, sortOrder)
@@ -137,7 +128,8 @@ export async function GET(req: NextRequest) {
     query = query.limit(pageSize);
 
     try {
-        const snapshot = await query.get();
+        const selected_fields = ["title", "sub_title"]
+        const snapshot = await query.select(...selected_fields).get();
 
         if (snapshot.empty) {
             return new Response(JSON.stringify({ message: 'No records found' }), {
@@ -150,7 +142,11 @@ export async function GET(req: NextRequest) {
             ...doc.data()
         }));
 
-        return new Response(JSON.stringify(results), {
+        
+
+        const response = {'data': results}
+
+        return new Response(JSON.stringify(response), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
